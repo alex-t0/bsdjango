@@ -14,8 +14,13 @@ requirejs.config({
 });*/
 
 define("bikestrike", ["jquery", "physicsjs"], function($, physics) {
-          if ($) alert('jquery defined');
-          if (physics) alert('physics defined');
-          return {};
+          // if ($) alert('jquery defined');
+          // if (physics) alert('physics defined');
+          return {
+            jquery: $,
+            JQuery: $,
+            $: $,
+            physics: physics
+          };
     }
 );
