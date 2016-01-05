@@ -2,12 +2,11 @@
 <!DOCTYPE html>
 <html>
     <head>
-      {% comment "Optional note" %}
-      <link rel="stylesheet" type="text/css" href="{% static 'bikestrike/item.css' %}" />
-      {% endcomment %}
+      <link rel="stylesheet" type="text/css" href="{% static 'bikestrike/bikestrike.css' %}" />
       <script data-main="{% static 'bikestrike/bikestrike-runner' %}" src="{% static 'bikestrike/bower_components/requirejs/require.js' %}"></script>
     </head>
     <body>
-        <h1>Hello world!</h1>
+        <div id="viewport" class="viewport">
+        </div>
     </body>
 </html>
