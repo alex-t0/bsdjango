@@ -13,14 +13,12 @@ requirejs.config({
     $('body').css("background-color","yellow");
 });*/
 
-define("bikestrike", ["jquery", "physicsjs"], function($, physics) {
-          // if ($) alert('jquery defined');
-          // if (physics) alert('physics defined');
+define("bikestrike", ["jquery", "physicsjs"], function($, physics, world) {
           return {
             jquery: $,
             JQuery: $,
             $: $,
-            physics: physics
+            physics: physics//,
           };
     }
 );

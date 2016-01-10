@@ -1,145 +1,90 @@
-requirejs(['bikestrike'],
-  function   (bikestrike) {
-    bikestrike.physics({ timestep: 8, sleepDisabled: true },function (world) {
+requirejs(['bikestrike', 'navigationCanvas1'],
+  function   (bikestrike, navigationCanvas) {
+    var count = 0;
+    bikestrike.physics(function(world){
+      var $gameplay = bikestrike.$("#gameplay");
 
-        var viewport = bikestrike.$("#viewport").get(0);
+      var worldWidth = 4*$gameplay.width(),
+          worldHeight = 1.05*$gameplay.height();
 
-        // bounds of the window
-        var viewportBounds = bikestrike.physics.aabb(0, 0, viewport.innerWidth, viewport.innerHeight)
-            ,edgeBounce
-            ,renderer
-            ;
+      // bounds of the window
+      var viewportBounds = bikestrike.physics.aabb(0, 0, worldWidth, worldHeight),
+          renderer;
 
-        // create a renderer
-        renderer = bikestrike.physics.renderer('canvas', {
-            el: 'viewport',
-            meta: true
-        });
+      var square = bikestrike.physics.body('rectangle', {
+              x: 250,
+              y: 250,
+              vx: 0.01,
+              vy: -0.005,
+              width: 50,
+              height: 50,
+              restitution: 0.5,
+              mass: 0.5,
+              cof: 0.5
+          });
 
-        // add the renderer
-        world.add(renderer);
-        // render on each step
-        world.on('step', function () {
-            world.render();
-        });
+      world.add(square);
 
-        // for constraints
-        var rigidConstraints = bikestrike.physics.behavior('verlet-constraints', {
-            iterations: 1
-        });
+      // create a renderer
+      renderer = bikestrike.physics.renderer('navigationCanvas1', {
+          el: $gameplay.attr('id'),
+          bordered: true/*,
+          follow: square,
+          offset: "center"*/
+      });
 
-        // the "cloth"
-        var cloth = [];
-        for ( var row = 0, l = 10; row < l; ++row ){
-            for ( var col = 0, lcol = 30; col < lcol; ++col ){
+      // debugger
+      // add the renderer
+      world.add(renderer);
+      // renderer.addLayer("otherLayer", $gameplay.find("canvas").get(0));
+      // render on each step
+      world.on('step', function () {
+          world.render();
+      });
 
-                cloth.push(
-                    bikestrike.physics.body('circle', {
-                        x: 8 * col + (renderer.width - l * 8) / 2
-                        ,y: 8 * row + (renderer.height/2 - 200)
-                        ,radius: 4
-                        ,hidden: true
-                    })
-                );
+      // bikestrike.createBoundRectangles(bikestrike.physics,
+      //   { x: worldWidth, y: worldHeight, viewportX: $gameplay.width() - 100,  viewportY: $gameplay.height() - 100, thickness: 50 },
+      //   world);
 
-                if (col > 0){
-                    // horizontal
-                    rigidConstraints.distanceConstraint(cloth[ lcol * row + col - 1 ], cloth[ lcol * row + col ], 0.4);
-                }
+      // constrain objects to these bounds
+      // var edgeBounce = bikestrike.physics.behavior('edge-collision-detection', {
+      //     aabb: viewportBounds,
+      //     restitution: 0.2,
+      //     cof: 0.8
+      // });
+      // world.add(edgeBounce);
 
-                if (row > 0){
+      var polygon = bikestrike.physics.body('convex-polygon', {
+          x: 400,
+          y: 200,
+          vx: -0.02,
+          restitution: 0.3,
+          cof: 10000,
+          mass: 1,
+          vertices: [
+              {x: 0, y: 80},
+              {x: 80, y: 0},
+              {x: 0, y: -80},
+              {x: -30, y: -30},
+              {x: -30, y: 30}
+          ]
+      });
+      world.add(polygon);
 
-                    // vertical
-                    rigidConstraints.distanceConstraint(cloth[ lcol * row + col ], cloth[ lcol * (row - 1) + col ], 0.5, 8);
-                } else {
+      world.add(bikestrike.physics.behavior('constant-acceleration'));
+      world.add(bikestrike.physics.behavior('interactive', { el: renderer.container }));
+      world.add(bikestrike.physics.behavior('body-collision-detection'));
+      world.add(bikestrike.physics.behavior('sweep-prune'));
+      world.add(bikestrike.physics.behavior('body-impulse-response'));
 
-                    cloth[ lcol * row + col ].treatment = 'static';
-                }
-            }
-        }
+      bikestrike.$("#render").click(function (){
+          // alert('from-render');
+          world.render();
+      });
 
-        world.on('integrate:positions', function(){
-
-            var constraints = rigidConstraints.getConstraints().distanceConstraints
-                ,c
-                ,threshold = 60
-                ,scratch = bikestrike.physics.scratchpad()
-                ,v = scratch.vector()
-                ,len
-                ;
-
-            for ( var i = 0, l = constraints.length; i < l; ++i ){
-
-                c = constraints[ i ];
-                len = v.clone( c.bodyB.state.pos ).vsub( c.bodyA.state.pos ).norm();
-
-                // break the constraint if above threshold
-                if ( (c.bodyA.treatment !== 'static' && c.bodyB.treatment !== 'static') && (len - c.targetLength) > threshold ){
-                    rigidConstraints.remove( c );
-                }
-            }
-
-            scratch.done();
-            // higher priority than constraint resolution
-        }, null, 100);
-
-        // render
-        var clothStyles = { strokeStyle: '#2aa198', lineWidth: 1 };
-        world.on('render', function( data ){
-
-            var renderer = data.renderer
-            	,constraints = rigidConstraints.getConstraints().distanceConstraints
-                ,c
-                ,ctx = renderer.ctx
-            	,t = data.meta.interpolateTime || 0
-                ;
-
-            // optimized line drawing
-            ctx.beginPath();
-            ctx.strokeStyle = clothStyles.strokeStyle;
-            ctx.lineWidth = clothStyles.lineWidth;
-            for ( var i = 0, l = constraints.length; i < l; ++i ){
-
-                c = constraints[ i ];
-                ctx.moveTo(c.bodyA.state.pos.x + c.bodyA.state.vel.x * t, c.bodyA.state.pos.y + c.bodyA.state.vel.y * t);
-                ctx.lineTo(c.bodyB.state.pos.x + c.bodyB.state.vel.x * t, c.bodyB.state.pos.y + c.bodyB.state.vel.y * t);
-            }
-            ctx.stroke();
-        });
-
-        // add things to world
-        world.add( cloth );
-        world.add( rigidConstraints );
-
-        // add some fun interaction
-        var attractor = bikestrike.physics.behavior('attractor', {
-            order: 0,
-            strength: 0.002
-        });
-        world.on({
-            'interact:poke': function( pos ){
-                world.wakeUpAll();
-                attractor.position( pos );
-                world.add( attractor );
-            }
-            ,'interact:move': function( pos ){
-                attractor.position( pos );
-            }
-            ,'interact:release': function(){
-                world.wakeUpAll();
-                world.remove( attractor );
-            }
-        });
-
-        // add things to the world
-        world.add([
-            bikestrike.physics.behavior('interactive', { el: renderer.container, moveThrottle: 5 })
-            ,bikestrike.physics.behavior('constant-acceleration')
-        ]);
-
-        // subscribe to ticker to advance the simulation
-        bikestrike.physics.util.ticker.on(function( time ) {
+      bikestrike.physics.util.ticker.on(function( time ) {
             world.step( time );
-        });
+      });
+      // bikestrike.physics.util.ticker.stop();
     });
 });
